@@ -16,7 +16,7 @@ To do: Graphics to show results. Quantification of the number of syllables per t
 Do you need another feature, you have new ideas? Please contact me at g.serranonajera@gmail.com
 
 
-# Pyesia: Herramientas para el analisis prosódico de poesía en español
+# Pyesia: Herramientas para el análisis prosódico de poesía en español
 
 Pyesia permite el análisis automático de la prosodia de poesia en español. Actualmente, las principales características son:
 
