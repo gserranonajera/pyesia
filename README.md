@@ -2,13 +2,31 @@
 Pyesia: A toolbox for prosodic analysis of poetry in Spanish
 
 Pyesia allows to perform automatic analysis of the prosody in of poetry written in Spanish. Currently, the main features are:
+
 > Count syllables
 
-> Determine tonic syllables
+> Localize tonic syllables
 
-> Detect synalephas and synalephas-hyatus
+> Localize synalephas and synalephas-hyatus
 
-> Tools to analyse a poem, verse by verse
+> Detect rhyme
 
-To Do:
-Following versions will include rhyme detectors and poetic forms classificators
+> Basic analysis of a poem verse by verse: Number of phological/metric syllables, position of the tonic syllables, final rhyme
+
+To do: Graphics to show results. Quantification of the number of syllables per tonic syllable.
+
+Pyesia: Herramientas para el analisis prosódico de poesía en español
+
+Pyesia permite el análisis automático de la prosodia de poesia en español. Actualmente, las principales características son:
+
+> Contar de sílabas
+
+> Localizar sílabas tónicas
+
+> Localizar sinalefas y sinalefas-hiato
+
+> Detectar rimas
+
+> Analisis básico del poema verso a verso: Número de sílabas fonológicas/métricas, posición de las sílabas tónicas, rima final
+
+Para hacer: Gráficos para mostrar resultados. Cuantificación de número de sílabas por sílaba tónica.
