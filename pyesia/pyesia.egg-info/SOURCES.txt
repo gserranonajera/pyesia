@@ -1,0 +1,10 @@
+setup.cfg
+setup.py
+pyesia/__init__.py
+pyesia/pyesia.py
+pyesia/spanish_poetry_functions.py
+pyesia.egg-info/PKG-INFO
+pyesia.egg-info/SOURCES.txt
+pyesia.egg-info/dependency_links.txt
+pyesia.egg-info/not-zip-safe
+pyesia.egg-info/top_level.txt

@@ -1,0 +1,11 @@
+Metadata-Version: 1.0
+Name: pyesia
+Version: 0.1
+Summary: Pyesia: A toolbox for prosodic analysis of poetry in spanish
+Home-page: https://github.com/gserranonajera/pyesia
+Author: Guillermo Serrano Nájera
+Author-email: g.serranonajera@gmail.com
+License: GNU GPLv3
+Description: UNKNOWN
+Keywords: spanish poetry
+Platform: UNKNOWN
