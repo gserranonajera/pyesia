@@ -12,7 +12,9 @@ Pyesia allows to perform automatic analysis of the prosody in of poetry written 
 
 > Basic analysis of a poem verse by verse: Number of phological/metric syllables, position of the tonic syllables, final rhyme
 
-To do: Graphics to show results. Quantification of the number of syllables per tonic syllable.
+> Basic plots showing the analysis
+
+To do: Quantification of the number of syllables per tonic syllable.
 
 Do you need another feature, you have new ideas? Please contact me at g.serranonajera@gmail.com
 
@@ -31,6 +33,8 @@ Pyesia permite el análisis automático de la prosodia de poesia en español. Ac
 
 > Analisis básico del poema verso a verso: Número de sílabas fonológicas/métricas, posición de las sílabas tónicas, rima final
 
-Para hacer: Gráficos para mostrar resultados. Cuantificación de número de sílabas por sílaba tónica.
+> Gráficos básicos para mostrar los resultados del análisis
+
+Por hacer: Cuantificación de número de sílabas por sílaba tónica.
 
 ¿Necesitas alguna otra herramient o tienes nuevas ideas? Por favor contáctame en g.serranonajera@gmail.com
