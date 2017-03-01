@@ -3,7 +3,10 @@
 spanish_poetry_functions.py
 @author: Guillermo Serrano Nájera
 """
-import re, string
+import re, string, unicodedata
+import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+import numpy as np
 
 def perform_analysis(poem_path):
     
@@ -50,18 +53,18 @@ def perform_analysis(poem_path):
                 verse_accents.append(syllable_number + current_tonic)
             else:
                 current_tonic = 0
-            
+
             [synalepha, synalepha_hyatus] = detect_synalephas(prev_syllables,\
                 current_syllables, prev_tonic, current_tonic)
-        
+
             if synalepha:
-                if synalepha_hyatus:
-                    verse_synalephas.append(syllable_number-length)
-                    verse_synalephas_hyatus.append(syllable_number-length)
+                verse_synalephas.append(syllable_number-length)
+            if synalepha_hyatus:                
+                verse_synalephas_hyatus.append(syllable_number-length)
             
             prev_syllables = current_syllables
             prev_tonic = current_tonic
-            
+
             if word_idx == total_words-1: # if it is the last word in the verse
                 if current_tonic == -1: # aguda
                     verse_type = 1
@@ -69,11 +72,13 @@ def perform_analysis(poem_path):
                     verse_type = -1
                 else: # llana
                     verse_type = 0
-                                        
-            [verse_metric_syllables, verse_accents] = correction_by_synalephas(syllable_number,\
-                verse_accents, verse_synalephas)
             
-            verse_metric_syllables += verse_type
+            word_idx += 1
+                
+#        [verse_metric_syllables, verse_accents] = accent_correction_by_synalephas(syllable_number,\
+#                verse_accents, verse_synalephas)
+        verse_metric_syllables = syllable_number - len(verse_synalephas)    
+        verse_metric_syllables += verse_type
             
         metric_syllables.append(verse_metric_syllables)
         phonologic_syllables.append(syllable_number)
@@ -86,6 +91,9 @@ def perform_analysis(poem_path):
     
 def clean_punctuation(text):
     return re.sub('[%s]' % re.escape(string.punctuation), ' ', text)
+    
+def clean_tildes(s):
+   return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
 
 def syllables(word):  
     '''
@@ -269,8 +277,8 @@ def detect_synalephas(prev_syllables, current_syllables, prev_tonic, current_ton
                           
     return ( synalepha, synalepha_hyatus )
 
-    
-def correction_by_synalephas( verse_syllables, accents_vector, synalephas_vector ):
+# deprecated
+def accent_correction_by_synalephas( verse_syllables, accents_vector, synalephas_vector ):
     
     # Calculate the number of synalephas
     # Calcula el número de sinalefas
@@ -312,19 +320,43 @@ def correction_by_synalephas( verse_syllables, accents_vector, synalephas_vector
                 
     return( metric_syllables, accents_vector )
 
+def syllable_correction(poemAnalysis):
+    poem_syllables = []
+    poem_accents = []
+    for vIdx in range(len(poemAnalysis.poem)):
+        verse_sylls = syllables(poemAnalysis.poem[vIdx])
+        verse_accts =np.array( poemAnalysis.accents[vIdx])
+        
+        synalephas = np.unique(poemAnalysis.synalephas[vIdx] + poemAnalysis.synalephas_hyatus[vIdx])
+        for syn in synalephas:
+            verse_sylls[syn-1] = verse_sylls[syn-1] + verse_sylls[syn]
+
+            # find the index of the elements in the vector of accents, bigger than the synalepha
+            indices = [ idx for idx, val in enumerate(verse_accts) if val >= syn ]
+
+            # substract 1 to the positions
+            verse_accts[indices] = [val - 1 for val in verse_accts[indices]]
+
+        verse_sylls = [idx for syn, idx in enumerate(verse_sylls) if syn not in synalephas]
+       
+        poem_syllables.append(verse_sylls)
+        poem_accents.append(list(verse_accts))
+        
+    return poem_syllables, poem_accents
+    
 def rhyme(word1, word2):
     s1 = syllables(word1)
     s2 = syllables(word2)
     
     t1 = tonic_syllable(s1)
     t2 = tonic_syllable(s2)
-    
+
     endC1 = sound_correction("".join(s1[t1:]))
     endC2 = sound_correction("".join(s2[t2:]))
 
     endA1 = re.sub(r'[^aeiouáéíóúáü]', '', endC1, flags=re.IGNORECASE)
     endA2 = re.sub(r'[^aeiouáéíóúáü]', '', endC2, flags=re.IGNORECASE)
-    
+
     strong = (endC1 == endC2)
     soft = (endA1 == endA2)
     
@@ -351,7 +383,7 @@ def sound_correction(text):
     text = text.replace("gue","ge")
     text = text.replace("gui","gi")
     
-    return text
+    return clean_tildes(text)
 
 def final_rhyme_analysis(poem):
     final_words = []    
@@ -364,19 +396,126 @@ def final_rhyme_analysis(poem):
     rhyme_scheme = {}
 
     for word1 in enumerate(final_words):
+        rhyme_found = 0
         for word2 in enumerate(final_words):
-            [R,r] = rhyme(word1[1],word2[1])
+            [R,r] = rhyme(word1[1], word2[1])
             
             if word1[1] != word2[1]:
             
                 if word1[0] not in sum(rhyme_scheme.values(),[]):
-    
+                    
                     if R:
-                        rhyme_scheme[keys[0].upper()] = [word1[0], word2[0]]
-                        keys=keys[1:]                   
+                        rhyme_found = 1
+                        if keys[0].upper() not in rhyme_scheme.keys():
+                            rhyme_scheme[keys[0].upper()] = [word1[0], word2[0]]
+                        else:
+                            rhyme_scheme[keys[0].upper()] = rhyme_scheme[keys[0].upper()] + [word1[0]]
+                                        
                         
                     elif r:
-                        rhyme_scheme[keys[0]] = [word1[0], word2[0]]
-                        keys=keys[1:]
+                        rhyme_found = 1
+                        if keys[0] not in rhyme_scheme.keys():
+                            rhyme_scheme[keys[0]] = [word1[0], word2[0]]
+                        else:
+                            rhyme_scheme[keys[0]] = rhyme_scheme[keys[0]] + [word1[0]]
+    if rhyme_found:
+        keys=keys[1:]  
 
     return rhyme_scheme
+    
+def plotPoemAnalysis(poemAnalysis):
+    shape = [len(poemAnalysis.poem), max([len(sylls) for sylls in poemAnalysis.correct_syllables])]
+    grid = np.zeros(shape, dtype=int, order='C')
+    
+    # fill the grid
+    for vIdx in range(shape[0]):
+        grid[vIdx, 0:len(poemAnalysis.correct_syllables[vIdx])] = -1 # -1 for another color
+        
+        if poemAnalysis.verse_classification[vIdx]==1:
+            grid[vIdx, len(poemAnalysis.correct_syllables[vIdx])] = 2 # add 2 if a syllable added if the verse is oxítino
+        
+        elif poemAnalysis.verse_classification[vIdx]==-1:
+            grid[vIdx, len(poemAnalysis.correct_syllables[vIdx])-1] = -2 # add -1 if the verse is paroxítono
+            
+        for aIdx in poemAnalysis.correct_accents[vIdx]:
+            grid[vIdx, aIdx] = 1
+    
+
+
+    data_table = np.zeros([shape[0], 3], dtype = int, order='C')
+    
+    c = 1
+    for k in poemAnalysis.rhyme_scheme.keys():
+        
+        for vIdx in poemAnalysis.rhyme_scheme[k]:
+            data_table[vIdx] = 1
+
+        c += 1   
+    
+    fig = plt.figure(facecolor="lightgrey")
+    
+    ax1 = fig.add_subplot(1,2,1)
+    cmap = LinearSegmentedColormap.from_list('mycmap', ['lightcyan', 'paleturquoise', 'lightgrey', 'sandybrown', 'peachpuff'])
+    ax1.pcolor(grid[::-1,:], cmap=cmap, vmin=-2, vmax=2, edgecolors='k', linewidths=1)
+    ax1.axis('off')
+    
+    ax2 = fig.add_subplot(1,2,2)
+    ax2.pcolor(data_table[::-1,:], cmap="Accent", vmin=0, vmax=c, edgecolors='k', linewidths=1)
+    ax2.axis('off')
+    
+    for vIdx in reversed(range(grid.shape[0])):
+        for sIdx in range(grid.shape[1]):
+            if sIdx < len(poemAnalysis.correct_syllables[shape[0]-1-vIdx]):
+                ax1.text(sIdx + 0.5, vIdx + 0.5, poemAnalysis.correct_syllables[shape[0]-1-vIdx][sIdx],
+                         horizontalalignment='center',
+                         verticalalignment='center',
+#                         fontweight='bold'
+                         )
+                ax2.text(1.5, shape[0]-1-vIdx + 0.5, poemAnalysis.metric_syllables[shape[0]-1-vIdx],
+                         horizontalalignment='center',
+                         verticalalignment='center',
+#                         fontweight='bold'
+                         )
+                ax2.text(2.5, shape[0]-1-vIdx + 0.5, poemAnalysis.phonologic_syllables[shape[0]-1-vIdx],
+                         horizontalalignment='center',
+                         verticalalignment='center',
+#                         fontweight='bold'
+                         )
+    
+    for k in poemAnalysis.rhyme_scheme.keys():
+        for vIdx in poemAnalysis.rhyme_scheme[k]:
+            ax2.text(0.5, shape[0]-1-vIdx + 0.5, k,
+                         horizontalalignment='center',
+                         verticalalignment='center',
+#                         fontweight='bold'
+                         )
+            data_table[vIdx] = 1
+        
+    fig.show()
+#    
+#def plotPoemAnalysis(poemAnalysis):
+#    
+#    yloc = 0.1
+#    
+#    for vIdx in reversed(range(len(poemAnalysis.poem))):
+#        accents = poemAnalysis.correct_accents[vIdx]
+#        sylls = poemAnalysis.correct_syllables[vIdx]
+#        
+#        xloc = 0.1
+#        for sIdx in range(len(sylls)):
+#            
+#            syl = sylls[sIdx]
+#            if sIdx in accents:
+#                bbox_props = dict(boxstyle="square", ec=(1.0, 0.5, 0.5), fc=(1.0, 0.8, 0.8))
+#            else:
+#                bbox_props = dict(boxstyle="square", ec=(0.5, 1.0, 0.5), fc=(0.8, 1.0, 0.8))
+#                     
+#            t = plt.text(xloc, yloc, syl, ha="left", va="center", bbox=bbox_props)
+#            xloc += 0.12
+##            print(t.get_bbox_patch().get_bbox())
+#             
+#        yloc += 0.1
+#         
+#
+#    plt.draw()
+#    plt.show()
