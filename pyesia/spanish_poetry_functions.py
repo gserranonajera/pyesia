@@ -353,19 +353,20 @@ def rhyme(word1, word2):
 
     endC1 = sound_correction("".join(s1[t1:]))
     endC2 = sound_correction("".join(s2[t2:]))
-
+    
     endA1 = re.sub(r'[^aeiouáéíóúáü]', '', endC1, flags=re.IGNORECASE)
     endA2 = re.sub(r'[^aeiouáéíóúáü]', '', endC2, flags=re.IGNORECASE)
 
     strong = (endC1 == endC2)
     soft = (endA1 == endA2)
-    
+        
     return strong, soft
 
 def sound_correction(text):
     '''
     R suave y R fuerte?
     '''
+    
     text = text.replace("v","b")
     
     text = text.replace("ca","ka")
@@ -383,7 +384,13 @@ def sound_correction(text):
     text = text.replace("gue","ge")
     text = text.replace("gui","gi")
     
-    return clean_tildes(text)
+    text = clean_tildes(text)
+    
+    # clean first letter for consontant rhyme
+    if text[0] not in ["a","e","i","o","u"]:
+        text = text[1:]
+        
+    return text
 
 def final_rhyme_analysis(poem):
     final_words = []    
@@ -393,7 +400,7 @@ def final_rhyme_analysis(poem):
         final_words.append(words_verse[-1])
         
     keys = string.ascii_lowercase
-    rhyme_scheme = {}
+    rhyme_dict = {}
 
     for word1 in enumerate(final_words):
         rhyme_found = 0
@@ -422,6 +429,63 @@ def final_rhyme_analysis(poem):
         keys=keys[1:]  
 
     return rhyme_scheme
+
+def rhyme_scheme(poem):
+    # This function takes the last word of each verse and returns two lists of 
+    # the verse which rhyme in consonant and asonant.
+    final_words = []    
+    for verse in poem:
+        verse = clean_punctuation(verse)
+        words_verse = verse.split()
+        final_words.append(words_verse[-1])
+        
+    con_list = []
+    aso_list = []
+    
+    # Test verses whith rhymes
+    for r in range(len(final_words)):
+        con_ind = []
+        aso_ind = []
+        for c in range(len(final_words)):
+            [con, aso] = rhyme(final_words[r],final_words[c])
+
+            if con:
+                con_ind.append(c)
+            if aso:
+                aso_ind.append(c)
+
+        if len(con_ind) > 1:
+            con_list.append(sorted(con_ind))
+        if len(aso_ind) > 1:
+            aso_list.append(sorted(aso_ind))
+
+    con_list = [list(x) for x in set(tuple(x) for x in con_list)]
+    aso_list = [list(x) for x in set(tuple(x) for x in aso_list)]
+
+    # Create a dictionary with the rhymes
+    rhyme_dict = {}
+
+    keys = string.ascii_uppercase
+    for rhymes in range(len(con_list)):
+        rhyme_dict[keys[rhymes]] = con_list[rhymes]
+
+    keys = string.ascii_lowercase
+    for rhymes in range(len(aso_list)):
+        rhyme_dict[keys[rhymes]] = aso_list[rhymes]
+        
+    
+    return con_list, aso_list, rhyme_dict
+    
+def compass_analysis(poemAnalysis):
+    
+    compass = []
+    mean_compass = []
+    for verse in range(len(poemAnalysis.accents)):
+        accs = [0]+poemAnalysis.accents[verse]
+        compass.append([y - x for x,y in zip(accs,accs[1:])])
+        mean_compass.append(np.mean(compass[verse]))
+    
+    return compass, mean_compass
     
 def plotPoemAnalysis(poemAnalysis):
     shape = [len(poemAnalysis.poem), max([len(sylls) for sylls in poemAnalysis.correct_syllables])]
@@ -442,25 +506,35 @@ def plotPoemAnalysis(poemAnalysis):
     
 
 
-    data_table = np.zeros([shape[0], 3], dtype = int, order='C')
+    data_table = np.zeros([shape[0], 5], dtype = int, order='C')
     
-    c = 1
-    for k in poemAnalysis.rhyme_scheme.keys():
+    c = 2
+    for k in sorted(poemAnalysis.rhyme_dict.keys()):
         
-        for vIdx in poemAnalysis.rhyme_scheme[k]:
-            data_table[vIdx] = 1
-
-        c += 1   
+        if k.isupper():
+            for vIdx in poemAnalysis.rhyme_dict[k]:
+                data_table[vIdx, :] = data_table[vIdx, :]+c
+            
+        else:
+            for vIdx in poemAnalysis.rhyme_dict[k]:
+                if data_table[vIdx, 0] == 0:
+                    data_table[vIdx, :] = data_table[vIdx, :]+1
+                else:
+                    data_table[vIdx, :] = -data_table[vIdx, :]
+        
+        c += 1
     
     fig = plt.figure(facecolor="lightgrey")
+    ax1 = fig.add_subplot(1,1,1)
     
-    ax1 = fig.add_subplot(1,2,1)
-    cmap = LinearSegmentedColormap.from_list('mycmap', ['lightcyan', 'paleturquoise', 'lightgrey', 'sandybrown', 'peachpuff'])
-    ax1.pcolor(grid[::-1,:], cmap=cmap, vmin=-2, vmax=2, edgecolors='k', linewidths=1)
+    fig2 = plt.figure(facecolor="lightgrey")
+    ax2 = fig2.add_subplot(1,1,1)
+    
+    cmapPoem = LinearSegmentedColormap.from_list('mycmap', ['lightcyan', 'paleturquoise', 'lightgrey', 'sandybrown', 'peachpuff'])
+    ax1.pcolor(grid[::-1,:], cmap=cmapPoem, vmin=-2, vmax=2, edgecolors='k', linewidths=1)
     ax1.axis('off')
     
-    ax2 = fig.add_subplot(1,2,2)
-    ax2.pcolor(data_table[::-1,:], cmap="Accent", vmin=0, vmax=c, edgecolors='k', linewidths=1)
+    ax2.pcolor(data_table[::-1,:], cmap="Set2", vmin=np.min(data_table), vmax=c, edgecolors='k', linewidths=1)
     ax2.axis('off')
     
     for vIdx in reversed(range(grid.shape[0])):
@@ -471,51 +545,53 @@ def plotPoemAnalysis(poemAnalysis):
                          verticalalignment='center',
 #                         fontweight='bold'
                          )
-                ax2.text(1.5, shape[0]-1-vIdx + 0.5, poemAnalysis.metric_syllables[shape[0]-1-vIdx],
+                ax2.text(2.5, shape[0]-1-vIdx + 0.5, poemAnalysis.verse_classification[shape[0]-1-vIdx],
                          horizontalalignment='center',
                          verticalalignment='center',
 #                         fontweight='bold'
                          )
-                ax2.text(2.5, shape[0]-1-vIdx + 0.5, poemAnalysis.phonologic_syllables[shape[0]-1-vIdx],
+                ax2.text(3.5, shape[0]-1-vIdx + 0.5, poemAnalysis.metric_syllables[shape[0]-1-vIdx],
+                         horizontalalignment='center',
+                         verticalalignment='center',
+#                         fontweight='bold'
+                         )
+                ax2.text(4.5, shape[0]-1-vIdx + 0.5, poemAnalysis.phonologic_syllables[shape[0]-1-vIdx],
                          horizontalalignment='center',
                          verticalalignment='center',
 #                         fontweight='bold'
                          )
     
-    for k in poemAnalysis.rhyme_scheme.keys():
-        for vIdx in poemAnalysis.rhyme_scheme[k]:
-            ax2.text(0.5, shape[0]-1-vIdx + 0.5, k,
-                         horizontalalignment='center',
-                         verticalalignment='center',
-#                         fontweight='bold'
-                         )
-            data_table[vIdx] = 1
+    for k in poemAnalysis.rhyme_dict.keys():
+        if k.isupper():
+            for vIdx in poemAnalysis.rhyme_dict[k]:
+                ax2.text(0.5, shape[0]-1-vIdx + 0.5, k,
+                             horizontalalignment='center',
+                             verticalalignment='center',
+    #                         fontweight='bold'
+                             )
+                data_table[vIdx] = 1
+        else:
+            for vIdx in poemAnalysis.rhyme_dict[k]:
+                ax2.text(1.5, shape[0]-1-vIdx + 0.5, k,
+                             horizontalalignment='center',
+                             verticalalignment='center',
+    #                         fontweight='bold'
+                             )
+                data_table[vIdx] = 1
         
     fig.show()
-#    
-#def plotPoemAnalysis(poemAnalysis):
-#    
-#    yloc = 0.1
-#    
-#    for vIdx in reversed(range(len(poemAnalysis.poem))):
-#        accents = poemAnalysis.correct_accents[vIdx]
-#        sylls = poemAnalysis.correct_syllables[vIdx]
-#        
-#        xloc = 0.1
-#        for sIdx in range(len(sylls)):
-#            
-#            syl = sylls[sIdx]
-#            if sIdx in accents:
-#                bbox_props = dict(boxstyle="square", ec=(1.0, 0.5, 0.5), fc=(1.0, 0.8, 0.8))
-#            else:
-#                bbox_props = dict(boxstyle="square", ec=(0.5, 1.0, 0.5), fc=(0.8, 1.0, 0.8))
-#                     
-#            t = plt.text(xloc, yloc, syl, ha="left", va="center", bbox=bbox_props)
-#            xloc += 0.12
-##            print(t.get_bbox_patch().get_bbox())
-#             
-#        yloc += 0.1
-#         
-#
-#    plt.draw()
-#    plt.show()
+
+def plot_compass(poemAnalysis):
+    boxprops = dict(linestyle='-', linewidth=3, color='darkgray')
+    medianprops = dict(linestyle='-', linewidth=2.5, color='gold')
+    meanlineprops = dict(linestyle='--', linewidth=2.5, color='violet')
+    whiskersprops = dict(linestyle='-', linewidth=2.5, color='darkgray')
+    capprops = dict(linestyle='-', linewidth=2.5, color='darkgray')
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.margins(y=0.05)
+    ax.boxplot(poemAnalysis.mean_compass, whis='range', meanline=True, showmeans=True, \
+               boxprops=boxprops, medianprops=medianprops, whiskerprops=whiskersprops,\
+               capprops=capprops, meanprops=meanlineprops)
+    ax.set_title('mean compass variation per verse', fontsize=20)
